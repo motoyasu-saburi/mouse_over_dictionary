@@ -51,6 +51,28 @@ bool ScreenOCR::Recognize(int x, int y, int width, int height, int scale)
 
 	ReleaseDC(SomeWindowHandle, DC);
 
+	// 文字認識の向上のため、取得した画像エリアに対して前処理を行う。
+	// Reference: https://stackoverflow.com/questions/28935983/preprocessing-image-for-tesseract-ocr-with-opencv
+	// テキストを黒にし、残りの部分を白にする。グレースケールの場合は背景がほぼ白であることが重要。
+	// ただ、テキスト部分はアンチエイリアスによって灰色であるほうが良い（場合がある）
+	// これらを考慮し、マウス領域からピックアップしたエリアに対して以下の処理を実施する
+	// 
+	// (Option) 画像のエッジ化
+	// グレースケール化
+	// 二値化のためのしきい値の算出（画像のグレースケール化後がよいはず）
+	// (Option)ネガポジ変換（テキストが白い場合、逆にする必要がある）
+	// しきい値を基にした二値化
+	//
+	// しきい値の算出には、以下の３種から選ぶこと
+	// http://sharky93.github.io/docs/dev/auto_examples/plot_local_otsu.html
+	// http://sharky93.github.io/docs/dev/auto_examples/plot_local_equalize.html
+	// https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html
+	// 
+	// この手法を利用する場合、しきい値の算出を手法を変えることで動的に変更できるといったメリットがある。
+	// テキスト取得エリアが限られる本アプリケーションでは、以下の手法についても考慮
+	// 案： マウスがホバーしている領域 n pixel 分を取得・平均値（RGB ? CMYK?)を算出。それをベースにしきい値とし、自動で２階調化をおこなう。また、同時にエッジ化や、ガウスをかける処理も検討
+	// この際、先に鮮鋭化を先に行うとよくなるかもしれないので、併せて検討
+
 	// 文字認識
 	tesseract_ptr->Recognize(0);
 	tesseract::ResultIterator* ri = tesseract_ptr->GetIterator();
